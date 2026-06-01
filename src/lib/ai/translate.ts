@@ -3,12 +3,12 @@
  * Used by API routes to fill the `translated` column on inbound messages
  * so agents can read non-English customer messages in English.
  *
- * Default provider: OpenAI gpt-4o-mini (cheap, fast, good enough for translation).
+ * Default provider: Perplexity sonar (works from HK, cheap, good enough for translation).
  * Override via env: SWIFTDESK_TRANSLATE_PROVIDER, SWIFTDESK_TRANSLATE_MODEL.
  *
- * NOTE: the existing routes use @rocketnew/llm-sdk for chat completions. We use
- * the same SDK here for consistency, so the provider/model map below must match
- * the env keys expected by chat-completion/route.ts.
+ * NOTE: the @rocketnew/llm-sdk requires model names in the form `{provider}/{model}`,
+ * e.g. `perplexity/sonar-pro`. The provider passed to /api/ai/chat-completion is the
+ * SDK's provider key (PERPLEXITY, OPEN_AI, etc.), not the prefix in the model name.
  */
 import { completion } from '@rocketnew/llm-sdk';
 
@@ -26,18 +26,17 @@ export const LANG_NAMES: Record<string, string> = {
 
 export const LANG_CODES = Object.keys(LANG_NAMES);
 
-/**
- * Map a language code to the SDK provider key expected by /api/ai/chat-completion.
- * - OPEN_AI: OPENAI_API_KEY
- * - ANTHROPIC: ANTHROPIC_API_KEY
- * - GEMINI: GEMINI_API_KEY
- * - PERPLEXITY: PERPLEXITY_API_KEY
- */
-function getProvider(): 'OPEN_AI' | 'ANTHROPIC' | 'GEMINI' | 'PERPLEXITY' {
-  return (process.env.SWIFTDESK_TRANSLATE_PROVIDER as any) || 'OPEN_AI';
+type Provider = 'OPEN_AI' | 'ANTHROPIC' | 'GEMINI' | 'PERPLEXITY';
+
+function getProvider(): Provider {
+  const env = process.env.SWIFTDESK_TRANSLATE_PROVIDER as Provider | undefined;
+  if (env && ['OPEN_AI', 'ANTHROPIC', 'GEMINI', 'PERPLEXITY'].includes(env)) {
+    return env;
+  }
+  return 'PERPLEXITY';
 }
 
-function getModel(provider: string): string {
+function getModel(provider: Provider): string {
   if (process.env.SWIFTDESK_TRANSLATE_MODEL) {
     return process.env.SWIFTDESK_TRANSLATE_MODEL;
   }
@@ -45,17 +44,17 @@ function getModel(provider: string): string {
     case 'OPEN_AI':
       return 'gpt-4o-mini';
     case 'ANTHROPIC':
-      return 'claude-3-5-sonnet-latest';
+      return 'anthropic/claude-3-5-sonnet-latest';
     case 'GEMINI':
-      return 'gemini-1.5-flash';
+      return 'google/gemini-1.5-flash';
     case 'PERPLEXITY':
-      return 'perplexity/sonar-pro';
+      return 'perplexity/sonar';
     default:
-      return 'gpt-4o-mini';
+      return 'perplexity/sonar';
   }
 }
 
-function getApiKey(provider: string): string | undefined {
+function getApiKey(provider: Provider): string | undefined {
   switch (provider) {
     case 'OPEN_AI':
       return process.env.OPENAI_API_KEY;
@@ -158,3 +157,4 @@ export async function translateText(
     return text;
   }
 }
+

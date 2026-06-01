@@ -29,13 +29,13 @@ export default function MessageThread({
   const [kbArticlesUsed, setKbArticlesUsed] = useState<{ id: string; title: string; category: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Perplexity hook for translation only
+  // Perplexity hook for translation only — Perplexity is geo-friendly (OpenAI is not)
   const {
     response: translationResponse,
     isLoading: translationLoading,
     error: translationError,
     sendMessage: sendTranslation,
-  } = useChat('PERPLEXITY', 'perplexity/sonar-pro', false);
+  } = useChat('PERPLEXITY', 'perplexity/sonar', false);
 
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([
     'Your order SH-8821 is currently in transit at the JNE Bekasi sorting hub. Expected delivery within 1–2 business days.',

@@ -1,91 +1,92 @@
-# Next.js
+# SwiftDesk
 
-A modern Next.js 15 application built with TypeScript and Tailwind CSS.
+**Native WhatsApp support desk for SMBs in Southeast Asia and India.** FreshDesk-competitive, WhatsApp-first.
 
-## 🚀 Features
+> Alpha build for the June 10, 2026 board demo to HM (majority shareholder, publicly listed in HK).
 
-- **Next.js 15** - Latest version with improved performance and features
-- **React 19** - Latest React version with enhanced capabilities
-- **Tailwind CSS** - Utility-first CSS framework for rapid UI development
+## Stack
 
-## 🛠️ Installation
+- **Frontend:** Next.js 15 (App Router) + React 19 + TypeScript
+- **Styling:** Tailwind CSS with a custom design system (Plus Jakarta Sans, JetBrains Mono)
+- **Backend:** Supabase (Postgres + Auth + Realtime)
+- **AI:** Perplexity Sonar via `@rocketnew/llm-sdk` (OpenAI / Anthropic / Gemini also supported)
+- **Deploy:** Netlify (via `@netlify/plugin-nextjs`)
 
-1. Install dependencies:
-  ```bash
-  npm install
-  # or
-  yarn install
-  ```
+## Quick start
 
-2. Start the development server:
-  ```bash
-  npm run dev
-  # or
-  yarn dev
-  ```
-3. Open [http://localhost:4028](http://localhost:4028) with your browser to see the result.
+```bash
+# 1. Install dependencies
+npm install
 
-## 📁 Project Structure
+# 2. Set up env (see .env.example or just copy the contents of .env)
+cp .env .env.local
 
-```
-nextjs/
-├── public/             # Static assets
-├── src/
-│   ├── app/            # App router components
-│   │   ├── layout.tsx  # Root layout component
-│   │   └── page.tsx    # Main page component
-│   ├── components/     # Reusable UI components
-│   ├── styles/         # Global styles and Tailwind configuration
-├── next.config.mjs     # Next.js configuration
-├── package.json        # Project dependencies and scripts
-├── postcss.config.js   # PostCSS configuration
-└── tailwind.config.js  # Tailwind CSS configuration
+# 3. Apply database schema (one-time, requires DATABASE_URL)
+npm run migrate
 
+# 4. Start dev server
+npm run dev
+# → http://localhost:4028
 ```
 
-## 🧩 Page Editing
+## Demo accounts (seeded by the migration)
 
-You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
+| Role | Email | Password |
+|---|---|---|
+| SMB Admin | `maya@batikcraft.id` | `Demo@Into23!` |
+| Support Agent | `priya@batikcraft.id` | `Agent@Into23!` |
+| Team Lead | `raj@cloudstack.in` | `Lead@Into23!` |
+| Agent | `arif@batikcraft.id` | `Agent@Into23!` |
+| Agent | `kavitha@batikcraft.id` | `Agent@Into23!` |
 
-## 🎨 Styling
+The seed also includes 5 multilingual contacts (Indonesian, Thai, Vietnamese, Tamil, Hindi), 5 open conversations in those languages, 6 KB articles, and a `Pro` plan subscription.
 
-This project uses Tailwind CSS for styling with the following features:
-- Utility-first approach for rapid development
-- Custom theme configuration
-- Responsive design utilities
-- PostCSS and Autoprefixer integration
+## Demo flow (June 10, 2026)
 
-## 📦 Available Scripts
+The "Demo Simulator" button in the top-right of the inbox is the **invisible stagehand** that lets the presenter inject customer WhatsApp messages on cue. In production, this is replaced by the real WhatsApp Cloud API webhook.
 
-- `npm run dev` - Start development server on port 4028
-- `npm run build` - Build the application for production
-- `npm run start` - Start the development server
-- `npm run serve` - Start the production server
-- `npm run lint` - Run ESLint to check code quality
-- `npm run lint:fix` - Fix ESLint issues automatically
-- `npm run format` - Format code with Prettier
+1. Sign in as `maya@batikcraft.id` / `Demo@Into23!`
+2. Open the Team Inbox — pre-seeded with 5 conversations in 5 languages
+3. Click **Demo Simulator** in the top-right
+4. Pick a contact (Siti, Somchai, Nguyen, Meena, Rahul)
+5. Click any of the one-tap presets, or type a custom message in any language
+6. Watch it land in the inbox, AI-translated to English
+7. Click an open conversation → use the **AI Suggestion** banner (KB-grounded reply)
+8. Hit **Send** → message persists, Realtime updates for the whole team
+9. Hit **Resolve** → conversation moves to resolved state
 
-## 📱 Deployment
+## Key routes
 
-Build the application for production:
+| Route | What |
+|---|---|
+| `/` | Team Inbox (Real Supabase data, Realtime updates) |
+| `/contacts` | Customer list (real data) |
+| `/ai-deflection` | KB performance metrics (real data) |
+| `/knowledge-base-management` | KB editor |
+| `/analytics-dashboard` | Conversation volume / FRT / deflection charts |
+| `/billing-dashboard` | Plan + invoices |
+| `/account-settings-configuration` | Workspace settings |
+| `/onboarding-setup-wizard` | 5-step setup (mocked, demo only) |
+| `/sign-up-login` | Auth |
+| `/api/messages/send` | Agent send (writes to `messages` table) |
+| `/api/messages/simulate-inbound` | Demo simulator (inserts customer message, AI-translates) |
+| `/api/conversations/resolve` | Mark conversation as resolved |
+| `/api/ai/chat-completion` | Generic LLM proxy |
+| `/api/ai/kb-suggest` | KB-grounded reply suggestions |
 
-  ```bash
-  npm run build
-  ```
+## Architecture notes
 
-## 📚 Learn More
+- **Service role key:** If `SUPABASE_SERVICE_ROLE_KEY` is set, server-side routes use it (bypasses RLS). If not, they fall back to the anon key — the seed migration has permissive RLS for authenticated users, so this works for the demo. Tighten before production.
+- **AI provider:** Default is Perplexity Sonar because OpenAI is geo-blocked from Hong Kong. Override with `SWIFTDESK_TRANSLATE_PROVIDER` and `SWIFTDESK_TRANSLATE_MODEL` env vars.
+- **Realtime:** `InboxLayout` subscribes to `postgres_changes` on `conversations` and `messages` — agent sends, customer simulator, and resolution all trigger automatic refresh.
+- **Translations:** `translated` column on `messages` is auto-filled by the AI when an inbound message arrives in a non-English language.
 
-To learn more about Next.js, take a look at the following resources:
+## What's NOT in the alpha (post-demo roadmap)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial
-
-You can check out the [Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## 🙏 Acknowledgments
-
-- Built with [Rocket.new](https://rocket.new)
-- Powered by Next.js and React
-- Styled with Tailwind CSS
-
-Built with ❤️ on Rocket.new
+- Real WhatsApp Cloud API webhook (currently simulated)
+- Multi-tenant isolation
+- Mobile app
+- Stripe billing
+- CRM / e-commerce platform integrations
+- Outbound campaigns
+- CSAT surveys / SLA management

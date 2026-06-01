@@ -1,0 +1,15 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Dev server settings (matches local dev port 4028)
+[dev]
+  command = "npm run dev"
+  port = 4028
+  targetPort = 4028

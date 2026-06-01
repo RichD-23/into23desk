@@ -111,7 +111,7 @@ Instructions:
     const userPrompt = `Customer messages:\n${customerMessages.map((m: string, i: number) => `${i + 1}. ${m}`).join('\n')}\n\nGenerate 2 reply suggestions as a JSON array.`;
 
     const response = await completion({
-      model: 'perplexity/sonar-pro',
+      model: 'perplexity/sonar',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
