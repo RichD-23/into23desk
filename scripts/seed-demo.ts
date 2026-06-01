@@ -220,16 +220,19 @@ async function ensureConversationsAndMessages(userIds: Record<string, string>) {
 }
 
 async function ensureKBArticles() {
+  // Wipe and re-insert — KB articles are demo data, fine to replace.
+  await supabase.from('kb_articles').delete().gte('created_at', '1970-01-01');
+
   const articles = [
-    { title: 'How to track your order', category: 'Order Tracking', status: 'published', languages: ['en','id','th','vi'], ai_usage_count: 1247, deflection_score: 94, author_name: 'Priya Nair',  views: 3821, content: '## How to track your order\n\nYou can track your order in three ways:\n\n**1. Via WhatsApp**\nSimply reply "track [order number]" in this chat and our AI will fetch your real-time tracking status.\n\n**2. Via Shopee/Lazada app**\nGo to Me → My Orders → Find your order → Track Package.\n\n**3. Via courier website**\nUse your tracking number on the JNE, J&T, or SiCepat website.\n\nTracking updates may take 24–48 hours after dispatch.' },
-    { title: 'Return and exchange policy', category: 'Returns & Exchanges', status: 'published', languages: ['en','id','hi'], ai_usage_count: 892, deflection_score: 87, author_name: 'Arif Wibowo', views: 2134, content: '## Return and Exchange Policy\n\nWe accept returns within **7 days** of delivery for the following reasons:\n\n- Item received is damaged or defective\n- Wrong item sent\n- Item does not match the description\n\n**How to initiate a return:**\n1. Take photos of the item and packaging\n2. Send photos to this WhatsApp chat\n3. Our team will approve and arrange a pickup within 24 hours' },
-    { title: 'Payment methods accepted', category: 'Payment & Billing', status: 'published', languages: ['en','id','th'], ai_usage_count: 634, deflection_score: 91, author_name: 'Priya Nair', views: 1876, content: '## Payment Methods\n\nWe accept the following payment methods:\n\n**Online:**\n- Credit/Debit cards (Visa, Mastercard)\n- GoPay, OVO, Dana (Indonesia)\n- PromptPay (Thailand)\n- UPI, Paytm (India)' },
-    { title: 'How to cancel an order', category: 'Order Tracking', status: 'published', languages: ['en','id','hi','ta'], ai_usage_count: 743, deflection_score: 82, author_name: 'Kavitha Rajan', views: 1654, content: '## How to Cancel an Order\n\nOrders can be cancelled **before they are shipped**.\n\n**To cancel:**\n1. Reply "cancel [order number]" in this chat\n2. Our AI will check if cancellation is still possible\n3. If confirmed, your refund will be processed within 3–5 business days' },
-    { title: 'Account password reset', category: 'Account & Profile', status: 'published', languages: ['en','id','th','vi','ta','hi'], ai_usage_count: 387, deflection_score: 96, author_name: 'Arif Wibowo', views: 891, content: '## Reset Your Password\n\n**Via app:**\n1. Tap "Forgot Password" on the login screen\n2. Enter your registered email or phone number\n3. Check your SMS/email for a 6-digit OTP\n4. Enter OTP and set a new password' },
-    { title: 'Size guide for clothing items', category: 'Product Information', status: 'draft', languages: ['en'], ai_usage_count: 0, deflection_score: 0, author_name: 'Priya Nair', views: 0, content: '## Size Guide\n\n*Draft — pending review by product team before publishing.*' },
+    { id: 'd0000001-0000-0000-0000-000000000001', title: 'How to track your order', category: 'Order Tracking', status: 'published', languages: ['en','id','th','vi'], ai_usage_count: 1247, deflection_score: 94, author_name: 'Priya Nair',  views: 3821, content: '## How to track your order\n\nYou can track your order in three ways:\n\n**1. Via WhatsApp**\nSimply reply "track [order number]" in this chat and our AI will fetch your real-time tracking status.\n\n**2. Via Shopee/Lazada app**\nGo to Me → My Orders → Find your order → Track Package.\n\n**3. Via courier website**\nUse your tracking number on the JNE, J&T, or SiCepat website.\n\nTracking updates may take 24–48 hours after dispatch.' },
+    { id: 'd0000002-0000-0000-0000-000000000002', title: 'Return and exchange policy', category: 'Returns & Exchanges', status: 'published', languages: ['en','id','hi'], ai_usage_count: 892, deflection_score: 87, author_name: 'Arif Wibowo', views: 2134, content: '## Return and Exchange Policy\n\nWe accept returns within **7 days** of delivery for the following reasons:\n\n- Item received is damaged or defective\n- Wrong item sent\n- Item does not match the description\n\n**How to initiate a return:**\n1. Take photos of the item and packaging\n2. Send photos to this WhatsApp chat\n3. Our team will approve and arrange a pickup within 24 hours' },
+    { id: 'd0000003-0000-0000-0000-000000000003', title: 'Payment methods accepted', category: 'Payment & Billing', status: 'published', languages: ['en','id','th'], ai_usage_count: 634, deflection_score: 91, author_name: 'Priya Nair', views: 1876, content: '## Payment Methods\n\nWe accept the following payment methods:\n\n**Online:**\n- Credit/Debit cards (Visa, Mastercard)\n- GoPay, OVO, Dana (Indonesia)\n- PromptPay (Thailand)\n- UPI, Paytm (India)' },
+    { id: 'd0000004-0000-0000-0000-000000000004', title: 'How to cancel an order', category: 'Order Tracking', status: 'published', languages: ['en','id','hi','ta'], ai_usage_count: 743, deflection_score: 82, author_name: 'Kavitha Rajan', views: 1654, content: '## How to Cancel an Order\n\nOrders can be cancelled **before they are shipped**.\n\n**To cancel:**\n1. Reply "cancel [order number]" in this chat\n2. Our AI will check if cancellation is still possible\n3. If confirmed, your refund will be processed within 3–5 business days' },
+    { id: 'd0000005-0000-0000-0000-000000000005', title: 'Account password reset', category: 'Account & Profile', status: 'published', languages: ['en','id','th','vi','ta','hi'], ai_usage_count: 387, deflection_score: 96, author_name: 'Arif Wibowo', views: 891, content: '## Reset Your Password\n\n**Via app:**\n1. Tap "Forgot Password" on the login screen\n2. Enter your registered email or phone number\n3. Check your SMS/email for a 6-digit OTP\n4. Enter OTP and set a new password' },
+    { id: 'd0000006-0000-0000-0000-000000000006', title: 'Size guide for clothing items', category: 'Product Information', status: 'draft', languages: ['en'], ai_usage_count: 0, deflection_score: 0, author_name: 'Priya Nair', views: 0, content: '## Size Guide\n\n*Draft — pending review by product team before publishing.*' },
   ];
   for (const a of articles) {
-    const { error } = await supabase.from('kb_articles').upsert(a, { onConflict: 'title' });
+    const { error } = await supabase.from('kb_articles').insert(a);
     if (error) console.error(`  ✗ KB "${a.title}": ${error.message}`);
     else console.log(`  ✓ KB "${a.title}"`);
   }
@@ -237,9 +240,14 @@ async function ensureKBArticles() {
 
 async function ensureBilling(userIds: Record<string, string>) {
   const admin = userIds['maya@batikcraft.id'];
+
+  // Wipe existing billing for the admin to avoid duplicates.
+  await supabase.from('billing_invoices').delete().eq('user_id', admin);
+  await supabase.from('billing_subscriptions').delete().eq('user_id', admin);
+
   const { data: sub, error: subErr } = await supabase
     .from('billing_subscriptions')
-    .upsert({
+    .insert({
       user_id: admin,
       plan_id: 'pro',
       billing_cycle: 'monthly',
@@ -250,7 +258,7 @@ async function ensureBilling(userIds: Record<string, string>) {
       current_period_end: '2026-06-10',
       monthly_spend: 149,
       is_active: true,
-    }, { onConflict: 'user_id' })
+    })
     .select()
     .single();
   if (subErr) {
@@ -268,7 +276,7 @@ async function ensureBilling(userIds: Record<string, string>) {
     { subscription_id: sub.id, user_id: admin, invoice_date: '2025-12-10', description: 'Starter Plan — Dec 2025', amount: 49, status: 'paid' },
   ];
   for (const inv of invoices) {
-    const { error } = await supabase.from('billing_invoices').upsert(inv, { onConflict: 'subscription_id,invoice_date' });
+    const { error } = await supabase.from('billing_invoices').insert(inv);
     if (error) console.error(`  ✗ Invoice: ${error.message}`);
   }
   console.log(`  ✓ Inserted ${invoices.length} invoices`);
