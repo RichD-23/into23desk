@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { Wand2 } from 'lucide-react';
 import ConversationList from './ConversationList';
 import MessageThread from './MessageThread';
 import ContactContextPanel from './ContactContextPanel';
 import { type Conversation } from './inboxData';
 import { createClient } from '@/lib/supabase/client';
+import WhatsAppSimulator from '@/components/WhatsAppSimulator';
 
 function mapDbConversation(row: any): Conversation {
   return {
@@ -67,6 +69,7 @@ export default function InboxLayout() {
   const [selectedId, setSelectedId] = useState<string>('');
   const [contextOpen, setContextOpen] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [simulatorOpen, setSimulatorOpen] = useState(false);
   const supabase = createClient();
 
   const fetchConversations = useCallback(async () => {
@@ -131,7 +134,19 @@ export default function InboxLayout() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden relative">
+      {/* Floating simulator toggle (demo only) */}
+      <button
+        onClick={() => setSimulatorOpen((v) => !v)}
+        className="absolute top-3 right-3 z-30 btn-secondary text-[11px] py-1.5 px-2.5 flex items-center gap-1.5 shadow-sm"
+        title="Demo: simulate a customer WhatsApp message"
+      >
+        <Wand2 size={12} />
+        {simulatorOpen ? 'Hide' : 'Demo'} Simulator
+      </button>
+
+      <WhatsAppSimulator open={simulatorOpen} onClose={() => setSimulatorOpen(false)} />
+
       {/* Conversation List Panel */}
       <div className="w-[300px] xl:w-[320px] flex-shrink-0 border-r border-border flex flex-col overflow-hidden">
         <ConversationList

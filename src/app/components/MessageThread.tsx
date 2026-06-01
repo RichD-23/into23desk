@@ -152,18 +152,52 @@ export default function MessageThread({
     ], { temperature: 0.2, max_tokens: 500 });
   };
 
-  const handleSend = () => {
-    if (!replyText.trim()) return;
+  const handleSend = async () => {
+    if (!replyText.trim() || sending) return;
     setSending(true);
-    setTimeout(() => {
-      setSending(false);
+    try {
+      const res = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: conversation.id,
+          content: replyText,
+          isNote,
+          agentName: 'Agent',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
       setReplyText('');
       toast.success(isNote ? 'Internal note added' : 'Message sent via WhatsApp');
-    }, 800);
+      // The InboxLayout Realtime subscription will refresh conversations automatically.
+    } catch (err: any) {
+      toast.error('Send failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setSending(false);
+    }
   };
 
-  const handleResolve = () => {
-    toast.success(`Conversation with ${conversation.contact.name} resolved`);
+  const handleResolve = async () => {
+    if (!conversation?.id) return;
+    try {
+      const res = await fetch('/api/conversations/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: conversation.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed');
+      }
+      toast.success(`Conversation with ${conversation.contact.name} resolved`);
+    } catch (err: any) {
+      // Fall back to optimistic toast — Realtime will not update, but the
+      // action will be retried manually.
+      toast.error('Resolve failed: ' + (err.message || 'Unknown error') + ' — refreshing inbox');
+      setTimeout(() => window.location.reload(), 1200);
+    }
   };
 
   const handleEscalate = () => {

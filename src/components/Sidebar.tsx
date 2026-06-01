@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
+import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/lib/supabase/client';
 import { MessageSquare, BarChart2, BookOpen, Settings, ChevronLeft, ChevronRight, Users, HelpCircle, Bell, LogOut, Bot, CreditCard } from 'lucide-react';
 
 interface NavItem {
@@ -102,7 +104,38 @@ const BadgeColors: Record<string, string> = {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const { user, signOut } = useAuth();
+  const [profile, setProfile] = useState<{ full_name?: string; role?: string; initials?: string; color_class?: string } | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+    supabase
+      .from('user_profiles')
+      .select('full_name, role, initials, color_class')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => setProfile(data || null));
+  }, [user]);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push('/sign-up-login');
+    } catch (err) {
+      console.error('Sign out failed:', err);
+    }
+  };
+
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Agent';
+  const displayRole = profile?.role || 'agent';
+  const initials = profile?.initials || displayName.charAt(0).toUpperCase();
+  const colorClass = profile?.color_class || 'bg-primary text-primary-foreground';
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -205,18 +238,22 @@ export default function Sidebar() {
         </div>
 
         {/* User Profile */}
-        <div className="flex items-center gap-2 px-2 py-2 mt-1 rounded-lg hover:bg-secondary cursor-pointer transition-colors">
-          <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold flex-shrink-0">
-            R
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-2 px-2 py-2 mt-1 rounded-lg hover:bg-secondary cursor-pointer transition-colors w-full text-left"
+          title="Sign out"
+        >
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${colorClass}`}>
+            {initials}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-600 text-foreground truncate">Raj Sharma</p>
-              <p className="text-[10px] text-muted-foreground truncate">Team Lead</p>
+              <p className="text-xs font-600 text-foreground truncate">{displayName}</p>
+              <p className="text-[10px] text-muted-foreground truncate capitalize">{displayRole}</p>
             </div>
           )}
           {!collapsed && <LogOut size={14} className="text-muted-foreground flex-shrink-0" />}
-        </div>
+        </button>
       </div>
 
       {/* Collapse Toggle */}
