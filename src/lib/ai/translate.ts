@@ -89,7 +89,7 @@ function getModel(provider: Provider): string {
     case 'DEEPSEEK':
       return 'deepseek-chat';
     case 'MIMO':
-      return process.env.XIAOMI_MIMO_MODEL || 'mimo-7b';
+      return process.env.XIAOMI_MIMO_MODEL || 'mimo-v2.5-pro';
     default:
       return 'perplexity/sonar';
   }
