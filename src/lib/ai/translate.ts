@@ -73,7 +73,8 @@ function getModel(provider: Provider): string {
   // 2. Provider-specific model from env.
   const providerModel = process.env[`SWIFTDESK_MODEL_${provider}`];
   if (providerModel) return providerModel;
-  // 3. Default.
+  // 3. Default. Direct-call providers (MIMO, DEEPSEEK, QWEN) need plain model names
+  //    for their OpenAI-compatible endpoints; SDK providers need provider/ prefix.
   switch (provider) {
     case 'OPEN_AI':
       return 'gpt-4o-mini';
@@ -84,9 +85,9 @@ function getModel(provider: Provider): string {
     case 'PERPLEXITY':
       return 'perplexity/sonar';
     case 'QWEN':
-      return 'qwen/qwen-plus';
+      return 'qwen-turbo';
     case 'DEEPSEEK':
-      return 'deepseek/deepseek-chat';
+      return 'deepseek-chat';
     case 'MIMO':
       return process.env.XIAOMI_MIMO_MODEL || 'mimo-7b';
     default:
@@ -179,6 +180,40 @@ async function chat(opts: {
   // Xiaomi MiMo: direct OpenAI-compatible call (SDK may not support it)
   if (provider === 'MIMO') {
     const endpoint = process.env.XIAOMI_MIMO_ENDPOINT || 'https://api.xiaomi.com/v1/chat/completions';
+    const result = await callOpenAICompatible({
+      endpoint,
+      apiKey,
+      model,
+      messages: [
+        { role: 'system', content: opts.system },
+        { role: 'user', content: opts.user },
+      ],
+      temperature: opts.temperature,
+      max_tokens: opts.max_tokens,
+    });
+    return result.content;
+  }
+
+  // DeepSeek: direct OpenAI-compatible call (SDK doesn't know this provider).
+  if (provider === 'DEEPSEEK') {
+    const endpoint = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1') + '/chat/completions';
+    const result = await callOpenAICompatible({
+      endpoint,
+      apiKey,
+      model,
+      messages: [
+        { role: 'system', content: opts.system },
+        { role: 'user', content: opts.user },
+      ],
+      temperature: opts.temperature,
+      max_tokens: opts.max_tokens,
+    });
+    return result.content;
+  }
+
+  // Alibaba Qwen via DashScope (OpenAI-compatible mode)
+  if (provider === 'QWEN') {
+    const endpoint = (process.env.QWEN_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1') + '/chat/completions';
     const result = await callOpenAICompatible({
       endpoint,
       apiKey,
