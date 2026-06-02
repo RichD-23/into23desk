@@ -13,13 +13,14 @@
  *   conversationId?: string,
  *   content: string,
  *   language?: string,         // ISO 639-1 code; if omitted, AI detects
+ *   provider?: string,         // LLM provider override (PERPLEXITY/QWEN/DEEPSEEK/MIMO/...)
  *   withTypingDelay?: number,  // ms before insertion (simulates the customer typing)
  *   withAiTranslation?: boolean, // default true — translate to English
  * }
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { detectLanguage, translateText, LANG_NAMES } from '@/lib/ai/translate';
+import { detectLanguage, translateText, LANG_NAMES, getProviderStatus, type Provider } from '@/lib/ai/translate';
 
 export async function POST(request: NextRequest) {
   let body: any;
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
     conversationId,
     content,
     language,
+    provider,
     withTypingDelay = 0,
     withAiTranslation = true,
   } = body || {};
@@ -146,7 +148,7 @@ export async function POST(request: NextRequest) {
   let detectedLang = (language || contactLanguage || 'en').toLowerCase();
   if (!language) {
     try {
-      const aiLang = await detectLanguage(content);
+      const aiLang = await detectLanguage(content, provider);
       if (aiLang) detectedLang = aiLang;
     } catch (err) {
       console.warn('[simulate] language detect failed, using contact default');
@@ -155,9 +157,11 @@ export async function POST(request: NextRequest) {
 
   // AI translate to English so the agent can read it.
   let translated: string | null = null;
+  let usedProvider: Provider | null = null;
   if (withAiTranslation && detectedLang !== 'en') {
     try {
-      translated = await translateText(content, 'en', detectedLang);
+      translated = await translateText(content, 'en', detectedLang, provider);
+      usedProvider = (provider as Provider) || (process.env.SWIFTDESK_TRANSLATE_PROVIDER as Provider) || 'PERPLEXITY';
     } catch (err) {
       console.warn('[simulate] translation failed');
     }
@@ -211,5 +215,6 @@ export async function POST(request: NextRequest) {
     detected_language: detectedLang,
     detected_language_name: LANG_NAMES[detectedLang] || detectedLang,
     translated,
+    provider_used: usedProvider,
   });
 }

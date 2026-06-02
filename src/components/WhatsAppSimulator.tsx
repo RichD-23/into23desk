@@ -98,8 +98,10 @@ export default function WhatsAppSimulator({ open, onClose }: WhatsAppSimulatorPr
   const [selectedContactId, setSelectedContactId] = useState<string>('');
   const [content, setContent] = useState('');
   const [language, setLanguage] = useState<string>('');
+  const [provider, setProvider] = useState<string>('');
+  const [providers, setProviders] = useState<Record<string, { configured: boolean; model: string; keyPreview?: string }>>({});
   const [sending, setSending] = useState(false);
-  const [history, setHistory] = useState<Array<{ id: string; contact: string; content: string; lang: string; translated?: string; emoji?: string }>>([]);
+  const [history, setHistory] = useState<Array<{ id: string; contact: string; content: string; lang: string; translated?: string; emoji?: string; provider?: string }>>([]);
   const [loadingContacts, setLoadingContacts] = useState(true);
   const [resetting, setResetting] = useState(false);
 
@@ -108,22 +110,18 @@ export default function WhatsAppSimulator({ open, onClose }: WhatsAppSimulatorPr
   useEffect(() => {
     if (!open) return;
     setLoadingContacts(true);
-    supabase
-      .from('contacts')
-      .select('id, name, phone, language, location')
-      .order('name')
-      .then(({ data, error }) => {
-        if (error) {
-          toast.error('Failed to load contacts: ' + error.message);
-        } else {
-          setContacts(data || []);
-          if (data && data.length > 0 && !selectedContactId) {
-            setSelectedContactId(data[0].id);
-            setLanguage(data[0].language || 'en');
-          }
-        }
-        setLoadingContacts(false);
-      });
+    Promise.all([
+      supabase.from('contacts').select('id, name, phone, language, location').order('name').then(({ data }) => data || []),
+      fetch('/api/admin/test-providers').then((r) => r.json()).then((d) => d.providers || {}).catch(() => ({})),
+    ]).then(([contactsData, providersData]) => {
+      setContacts(contactsData);
+      setProviders(providersData);
+      if (contactsData.length > 0 && !selectedContactId) {
+        setSelectedContactId(contactsData[0].id);
+        setLanguage(contactsData[0].language || 'en');
+      }
+      setLoadingContacts(false);
+    });
   }, [open]);
 
   const sendMessage = async (opts: { preset?: PresetMessage } = {}) => {
@@ -148,6 +146,7 @@ export default function WhatsAppSimulator({ open, onClose }: WhatsAppSimulatorPr
           contactId: selectedContactId,
           content: messageContent,
           language: messageLang,
+          provider: provider || undefined,
           withAiTranslation: true,
         }),
       });
@@ -156,6 +155,7 @@ export default function WhatsAppSimulator({ open, onClose }: WhatsAppSimulatorPr
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
       const contact = contacts.find((c) => c.id === selectedContactId);
+      const provUsed = data.provider_used || provider;
       setHistory((prev) =>
         [
           {
@@ -165,13 +165,14 @@ export default function WhatsAppSimulator({ open, onClose }: WhatsAppSimulatorPr
             lang: data.detected_language,
             translated: data.translated,
             emoji: opts.preset?.emoji,
+            provider: provUsed,
           },
           ...prev,
         ].slice(0, 8)
       );
 
       toast.success(
-        `Sent as ${contact?.name} (${LANG_LABELS[data.detected_language] || data.detected_language})`
+        `Sent as ${contact?.name} (${LANG_LABELS[data.detected_language] || data.detected_language}${provUsed ? ` · ${provUsed}` : ''})`
       );
 
       if (!opts.preset) setContent('');
@@ -292,7 +293,7 @@ export default function WhatsAppSimulator({ open, onClose }: WhatsAppSimulatorPr
             placeholder="Or type your own — any language, any tone…"
             className="input-field min-h-[72px] text-[13px] resize-y"
           />
-          <div className="flex items-center gap-2 mt-1.5">
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <Globe size={11} className="text-muted-foreground" />
             <select
               value={language}
@@ -307,6 +308,21 @@ export default function WhatsAppSimulator({ open, onClose }: WhatsAppSimulatorPr
               <option value="ta">Tamil</option>
               <option value="hi">Hindi</option>
               <option value="bn">Bengali</option>
+            </select>
+            <span className="text-[10px] text-muted-foreground">·</span>
+            <span className="text-[10px] text-muted-foreground">Model:</span>
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+              className="text-[10.5px] py-0.5 px-1.5 rounded border border-border bg-secondary"
+              title="AI provider for translation. Per-message override."
+            >
+              <option value="">Default ({Object.entries(providers).find(([, info]) => info.configured)?.[0] || '—'})</option>
+              {Object.entries(providers).map(([key, info]) => (
+                <option key={key} value={key} disabled={!info.configured}>
+                  {key}{!info.configured ? ' (no key)' : ''}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -410,6 +426,11 @@ export default function WhatsAppSimulator({ open, onClose }: WhatsAppSimulatorPr
                     <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary font-600">
                       {LANG_LABELS[h.lang] || h.lang}
                     </span>
+                    {h.provider && (
+                      <span className="text-[8.5px] px-1 py-0.5 rounded bg-secondary text-muted-foreground font-600">
+                        {h.provider}
+                      </span>
+                    )}
                   </div>
                   <p className="text-foreground/80">{h.content}</p>
                   {h.translated && (
