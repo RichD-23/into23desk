@@ -2,15 +2,15 @@
  * POST /api/messages/send
  *
  * Agent sends a message (or adds an internal note) to a conversation.
- * Writes to `messages` and updates `conversations.last_message` / `last_message_time`.
+ * For real outbound (not notes), also calls WhatsApp Cloud API to deliver
+ * the message to the customer. Returns the WA message ID so we can track
+ * delivery status via the inbound webhook.
  *
  * Body: { conversationId: string, content: string, isNote?: boolean, agentName?: string }
- *
- * For the demo: uses the service role key to bypass RLS. In production,
- * validate the user session and only allow the assigned agent to send.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendWhatsAppMessage } from '@/lib/whatsapp/client';
 
 export async function POST(request: NextRequest) {
   let body: any;
@@ -31,10 +31,13 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Fetch the conversation to get contact_id, language, etc.
+  // Fetch the conversation + contact to get the phone number
   const { data: conv, error: convErr } = await supabase
     .from('conversations')
-    .select('id, contact_id, language, status, assigned_agent_id')
+    .select(`
+      id, language, status, assigned_agent_id, workspace_id,
+      contacts(phone, name, language)
+    `)
     .eq('id', conversationId)
     .single();
 
@@ -45,21 +48,48 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // If this is a real (non-note) outbound message, optionally translate it
-  // back to the customer's language. For the demo we just store what the
-  // agent typed; production would call translateText() before sending to WA.
+  // Notes don't go to WhatsApp
   const messageType: 'text' | 'note' = isNote ? 'note' : 'text';
   const direction: 'out' | 'note' = isNote ? 'note' : 'out';
+
+  // For real outbound, also send via WhatsApp Cloud API
+  let waMessageId: string | null = null;
+  let waDelivery: 'sent' | 'delivered' | 'read' | 'failed' | null = null;
+  let waError: string | undefined = undefined;
+  let waSimulated: boolean = false;
+
+  if (!isNote) {
+    const contact = (conv as any).contacts;
+    if (contact?.phone) {
+      const result = await sendWhatsAppMessage({
+        workspaceId: (conv as any).workspace_id,
+        to: contact.phone,
+        text: content.trim(),
+      });
+      if (result.ok) {
+        waMessageId = result.messageId || null;
+        waDelivery = 'sent';
+      } else {
+        waDelivery = 'failed';
+        waError = result.error;
+        waSimulated = result.simulated || false;
+        // Don't fail the request — the message is still saved in the DB.
+        // The agent can see the delivery status.
+      }
+    }
+  }
 
   const { data: message, error: msgErr } = await supabase
     .from('messages')
     .insert({
+      workspace_id: (conv as any).workspace_id,
       conversation_id: conversationId,
       message_type: messageType,
       direction,
       content: content.trim(),
-      delivery: isNote ? null : 'sent',
+      delivery: isNote ? null : (waDelivery || 'sent'),
       author_name: agentName || 'Agent',
+      wa_message_id: waMessageId,
     })
     .select()
     .single();
@@ -72,10 +102,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Update conversation metadata.
-  // For real outbound, reset unread_count (since the agent is responding).
-  // last_message / last_message_time should reflect the latest message regardless of direction
-  // so the inbox list shows recent activity.
+  // Update conversation metadata
   const updatePayload: any = {
     last_message: content.trim().slice(0, 200),
     last_message_time: new Date().toISOString(),
@@ -91,8 +118,15 @@ export async function POST(request: NextRequest) {
 
   if (updateErr) {
     console.error('[send] update conversation failed:', updateErr);
-    // Don't fail the request — the message was inserted. Log and continue.
   }
 
-  return NextResponse.json({ message, conversation_id: conversationId });
+  return NextResponse.json({
+    message,
+    conversation_id: conversationId,
+    whatsapp: waMessageId
+      ? { ok: true, messageId: waMessageId, delivery: waDelivery }
+      : waDelivery === 'failed'
+      ? { ok: false, error: waError, simulated: waSimulated }
+      : null,
+  });
 }
