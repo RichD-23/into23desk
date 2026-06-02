@@ -14,10 +14,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = createAdminClient();
-  const workspaceId = params.id;
+  const { id: workspaceId } = await params;
 
   // Verify the caller is a member of this workspace
   const { data: { user } } = await supabase.auth.getUser(
@@ -72,10 +72,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = createAdminClient();
-  const workspaceId = params.id;
+  const { id: workspaceId } = await params;
 
   // Verify caller is owner/admin of the workspace
   const { data: { user } } = await supabase.auth.getUser(
