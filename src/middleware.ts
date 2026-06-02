@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-const PUBLIC_PATHS = ['/sign-up-login', '/auth/callback', '/favicon.ico', '/api/webhooks'];
+const PUBLIC_PATHS = ['/sign-up-login', '/auth/callback', '/favicon.ico', '/api/webhooks', '/api/billing/webhook'];
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true;
